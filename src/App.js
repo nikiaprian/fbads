@@ -12,8 +12,8 @@ import "i18n-iso-countries/langs/id.json";
 countries.registerLocale(require("i18n-iso-countries/langs/id.json"));
 
 function App() {
-  const [startDate, setStartDate] = useState("2024-04-01");
-  const [endDate, setEndDate] = useState("2024-04-30");
+  const [startDate, setStartDate] = useState("2023-04-01");
+  const [endDate, setEndDate] = useState("2025-05-30");
   const [accessToken] = useState(process.env.REACT_APP_FB_ACCESS_TOKEN);
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState("");
