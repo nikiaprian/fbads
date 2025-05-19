@@ -1,3 +1,4 @@
+// App.js
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import CampaignsTable from "./components/CampaignsTable";
@@ -5,8 +6,14 @@ import AdSetsTable from "./components/AdSetsTable";
 import AdsTable from "./components/AdsTable";
 import InsightsTable from "./components/InsightsTable";
 import AccountSelector from "./components/AccountSelector";
+import countries from "i18n-iso-countries";
+import "i18n-iso-countries/langs/id.json";
+
+countries.registerLocale(require("i18n-iso-countries/langs/id.json"));
 
 function App() {
+  const [startDate, setStartDate] = useState("2024-04-01");
+  const [endDate, setEndDate] = useState("2024-04-30");
   const [accessToken] = useState(process.env.REACT_APP_FB_ACCESS_TOKEN);
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState("");
@@ -18,7 +25,6 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Ambil semua ad accounts saat awal
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
@@ -30,7 +36,7 @@ function App() {
         });
         setAccounts(res.data.data);
         if (res.data.data.length > 0) {
-          setSelectedAccount(res.data.data[0].id); // pilih yang pertama secara default
+          setSelectedAccount(res.data.data[0].id);
         }
       } catch (err) {
         setError("Gagal mengambil daftar akun: " + err.message);
@@ -94,14 +100,20 @@ function App() {
           access_token: accessToken,
           fields: "impressions,clicks,spend,ctr,cpm",
           breakdowns: "country",
-          time_range: JSON.stringify({ since: "2024-04-01", until: "2024-04-30" }),
+          time_range: JSON.stringify({ since: startDate, until: endDate }),
         },
       });
 
-      const mapped = response.data.data.map((item) => ({
-        ...item,
-        country: item.country || item.breakdowns?.country || "UNKNOWN",
-      }));
+      const mapped = response.data.data.map((item) => {
+        const countryCode = item.country || item.breakdowns?.country || "UNKNOWN";
+        const fullCountryName =
+          countries.getName(countryCode, "id", { select: "official" }) || countryCode;
+
+        return {
+          ...item,
+          country: fullCountryName,
+        };
+      });
 
       setInsightsCountry(mapped);
       console.log("Contoh insight:", mapped[0]);
@@ -114,7 +126,12 @@ function App() {
 
   const formatCurrency = (value) => {
     const number = parseFloat(value);
-    return isNaN(number) ? "-" : number.toLocaleString("id-ID", { style: "currency", currency: "IDR" });
+    return isNaN(number)
+      ? "-"
+      : number.toLocaleString("id-ID", {
+          style: "currency",
+          currency: "IDR",
+        });
   };
 
   const formatPercentage = (value) => {
@@ -122,9 +139,10 @@ function App() {
     return isNaN(number) ? "-" : number.toFixed(2) + "%";
   };
 
-  const filteredInsights = selectedCountries.length > 0
-    ? insightsCountry.filter((i) => selectedCountries.includes(i.country))
-    : insightsCountry;
+  const filteredInsights =
+    selectedCountries.length > 0
+      ? insightsCountry.filter((i) => selectedCountries.includes(i.country))
+      : insightsCountry;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 p-8 font-sans">
@@ -137,6 +155,27 @@ function App() {
             selectedAccount={selectedAccount}
             onChange={setSelectedAccount}
           />
+
+          <div className="flex items-center gap-4 my-4">
+            <div>
+              <label className="block text-sm font-medium text-blue-800">Tanggal Mulai</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="border rounded px-3 py-1 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-blue-800">Tanggal Selesai</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="border rounded px-3 py-1 text-sm"
+              />
+            </div>
+          </div>
 
           <button
             onClick={fetchAllData}
@@ -157,7 +196,6 @@ function App() {
           {error && <p className="text-red-600 mt-3">{error}</p>}
         </div>
 
-        {/* Filter Negara + Tabel Insights */}
         {insightsCountry.length > 0 && (
           <div className="bg-white p-6 mb-6 rounded-xl shadow">
             <h2 className="text-lg font-semibold text-blue-700 mb-3">Filter Negara</h2>
@@ -194,7 +232,6 @@ function App() {
           </div>
         )}
 
-        {/* Tabel lainnya */}
         {campaigns.length > 0 && <CampaignsTable campaigns={campaigns} />}
         {adsets.length > 0 && <AdSetsTable adsets={adsets} />}
         {ads.length > 0 && <AdsTable ads={ads} />}
