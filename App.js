@@ -1,5 +1,5 @@
 // App.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import CampaignsTable from "./components/CampaignsTable";
 import AdSetsTable from "./components/AdSetsTable";
@@ -24,6 +24,20 @@ function App() {
   const [selectedCountries, setSelectedCountries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showCountryFilter, setShowCountryFilter] = useState(false);
+
+  const dropdownRef = useRef();
+
+  // Close dropdown if clicked outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowCountryFilter(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -59,13 +73,15 @@ function App() {
         axios.get(`${baseURL}/campaigns`, {
           params: {
             access_token: accessToken,
-            fields: "id,name,status,daily_budget,lifetime_budget,insights{reach,impressions,frequency,spend,actions,cost_per_action_type}",
+            fields:
+              "id,name,status,daily_budget,lifetime_budget,insights{reach,impressions,frequency,spend,actions,cost_per_action_type}",
           },
         }),
         axios.get(`${baseURL}/adsets`, {
           params: {
             access_token: accessToken,
-            fields: "id,name,status,campaign_id,daily_budget,start_time,end_time,billing_event,optimization_goal",
+            fields:
+              "id,name,status,campaign_id,daily_budget,start_time,end_time,billing_event,optimization_goal",
           },
         }),
         axios.get(`${baseURL}/ads`, {
@@ -116,7 +132,8 @@ function App() {
       });
 
       setInsightsCountry(mapped);
-      console.log("Contoh insight:", mapped[0]);
+      // Jika mau otomatis pilih semua negara yang ada:
+      // setSelectedCountries(mapped.map(i => i.country));
     } catch (err) {
       setError("Gagal mengambil data insight: " + err.message);
     } finally {
@@ -143,6 +160,17 @@ function App() {
     selectedCountries.length > 0
       ? insightsCountry.filter((i) => selectedCountries.includes(i.country))
       : insightsCountry;
+
+  const allCountries = [...new Set(insightsCountry.map((i) => i.country))].sort();
+
+  // Handler toggle select all / clear all
+  const toggleSelectAll = () => {
+    if (selectedCountries.length === allCountries.length) {
+      setSelectedCountries([]);
+    } else {
+      setSelectedCountries(allCountries);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 p-8 font-sans">
@@ -197,29 +225,80 @@ function App() {
         </div>
 
         {insightsCountry.length > 0 && (
-          <div className="bg-white p-6 mb-6 rounded-xl shadow">
-            <h2 className="text-lg font-semibold text-blue-700 mb-3">Filter Negara</h2>
-            <div className="flex flex-wrap gap-3 mb-4">
-              {[...new Set(insightsCountry.map((i) => i.country))].map((country) => (
-                <label
-                  key={country}
-                  className="flex items-center space-x-2 text-sm bg-blue-50 px-3 py-1 rounded shadow"
+          <div className="bg-white p-6 mb-6 rounded-xl shadow relative">
+            <h2 className="text-lg font-semibold text-blue-700 mb-3 flex items-center justify-between">
+              Filter Negara
+              {/* Icon button to toggle dropdown */}
+              <button
+                onClick={() => setShowCountryFilter((show) => !show)}
+                aria-label="Toggle filter negara"
+                title="Filter Negara"
+                className="text-blue-700 hover:text-blue-900 focus:outline-none"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedCountries.includes(country)}
-                    onChange={() =>
-                      setSelectedCountries((prev) =>
-                        prev.includes(country)
-                          ? prev.filter((c) => c !== country)
-                          : [...prev, country]
-                      )
-                    }
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L15 13v7a1 1 0 01-1.447.894l-4-2A1 1 0 019 18v-5L3.293 6.707A1 1 0 013 6V4z"
                   />
-                  <span>{country}</span>
-                </label>
-              ))}
-            </div>
+                </svg>
+              </button>
+            </h2>
+
+            {/* Dropdown */}
+            {showCountryFilter && (
+              <div
+                ref={dropdownRef}
+                className="absolute z-20 bg-white border border-blue-300 rounded shadow-lg p-4 w-72 max-h-96 overflow-y-auto"
+              >
+                <div className="flex justify-between mb-3">
+                  <button
+                    onClick={toggleSelectAll}
+                    className="text-sm text-blue-700 hover:underline focus:outline-none"
+                  >
+                    {selectedCountries.length === allCountries.length
+                      ? "Hapus Semua"
+                      : "Pilih Semua"}
+                  </button>
+                  <button
+                    onClick={() => setShowCountryFilter(false)}
+                    aria-label="Close dropdown"
+                    className="text-sm text-gray-500 hover:text-gray-700 focus:outline-none"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto">
+                  {allCountries.map((country) => (
+                    <label
+                      key={country}
+                      className="flex items-center space-x-2 cursor-pointer select-none"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCountries.includes(country)}
+                        onChange={() => {
+                          setSelectedCountries((prev) =>
+                            prev.includes(country)
+                              ? prev.filter((c) => c !== country)
+                              : [...prev, country]
+                          );
+                        }}
+                      />
+                      <span>{country}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <InsightsTable
               insights={filteredInsights.map((item) => ({
