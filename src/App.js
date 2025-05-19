@@ -199,26 +199,13 @@ function App() {
         {insightsCountry.length > 0 && (
           <div className="bg-white p-6 mb-6 rounded-xl shadow">
             <h2 className="text-lg font-semibold text-blue-700 mb-3">Filter Negara</h2>
-            <div className="flex flex-wrap gap-3 mb-4">
-              {[...new Set(insightsCountry.map((i) => i.country))].map((country) => (
-                <label
-                  key={country}
-                  className="flex items-center space-x-2 text-sm bg-blue-50 px-3 py-1 rounded shadow"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedCountries.includes(country)}
-                    onChange={() =>
-                      setSelectedCountries((prev) =>
-                        prev.includes(country)
-                          ? prev.filter((c) => c !== country)
-                          : [...prev, country]
-                      )
-                    }
-                  />
-                  <span>{country}</span>
-                </label>
-              ))}
+            <div className="relative inline-block text-left w-64 mb-4">
+              <label className="block text-sm font-medium text-blue-800 mb-1">Pilih Negara</label>
+              <DropdownMultiSelect
+                options={[...new Set(insightsCountry.map((i) => i.country))]}
+                selectedOptions={selectedCountries}
+                onChange={setSelectedCountries}
+              />
             </div>
 
             <InsightsTable
@@ -236,6 +223,71 @@ function App() {
         {adsets.length > 0 && <AdSetsTable adsets={adsets} />}
         {ads.length > 0 && <AdsTable ads={ads} />}
       </div>
+    </div>
+  );
+}
+
+function DropdownMultiSelect({ options, selectedOptions, onChange }) {
+  const [open, setOpen] = React.useState(false);
+  const toggleOpen = () => setOpen(!open);
+  const ref = React.useRef();
+
+  React.useEffect(() => {
+    function handleClickOutside(event) {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [ref]);
+
+  const toggleOption = (option) => {
+    if (selectedOptions.includes(option)) {
+      onChange(selectedOptions.filter((o) => o !== option));
+    } else {
+      onChange([...selectedOptions, option]);
+    }
+  };
+
+  const displayText =
+    selectedOptions.length === 0
+      ? "List countries"
+      : selectedOptions.join(", ");
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={toggleOpen}
+        className="w-full rounded border border-gray-300 bg-white py-2 px-3 text-left text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+      >
+        {displayText}
+        <span className="float-right ml-2">&#9662;</span>
+      </button>
+      {open && (
+        <div className="absolute mt-1 w-[36rem] max-h-[28rem] overflow-y-auto rounded border border-gray-300 bg-white shadow-lg z-10">
+              <div className="grid grid-cols-4 gap-4 p-3 max-h-[28rem] overflow-y-auto">
+                {options.map((option) => (
+                  <label
+                    key={option}
+                    className="flex items-center space-x-2 cursor-pointer whitespace-nowrap"
+                    style={{ minWidth: "120px" }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedOptions.includes(option)}
+                      onChange={() => toggleOption(option)}
+                      className="form-checkbox h-5 w-5 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700 select-none">{option}</span>
+                  </label>
+                ))}
+              </div>
+        </div>
+      )}
     </div>
   );
 }
