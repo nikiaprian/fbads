@@ -8,8 +8,8 @@ import AccountSelector from "./components/AccountSelector";
 
 function App() {
   const [accessToken] = useState(process.env.REACT_APP_FB_ACCESS_TOKEN);
-  const [accounts, setAccounts] = useState([]);
-  const [selectedAccount, setSelectedAccount] = useState("");
+  const [adAccountId, setAdAccountId] = useState("");
+
   const [campaigns, setCampaigns] = useState([]);
   const [adsets, setAdsets] = useState([]);
   const [ads, setAds] = useState([]);
@@ -17,48 +17,42 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Ambil semua ad accounts saat awal
-  useEffect(() => {
-    const fetchAccounts = async () => {
-      try {
-        const res = await axios.get("https://graph.facebook.com/v19.0/me/adaccounts", {
-          params: {
-            access_token: accessToken,
-            fields: "id,name",
-          },
-        });
-        setAccounts(res.data.data);
-        if (res.data.data.length > 0) {
-          setSelectedAccount(res.data.data[0].id); // pilih yang pertama secara default
-        }
-      } catch (err) {
-        setError("Gagal mengambil daftar akun: " + err.message);
-      }
-    };
+  // Daftar akun yang tersedia (bisa Anda ganti sesuai kebutuhan)
+  const adAccounts = [
+    { id: "850238733713572", name: "Main Account" },
+    { id: "123456789012345", name: "Backup Account" },
+  ];
 
-    fetchAccounts();
-  }, [accessToken]);
+  // Set akun default saat pertama kali render
+  useEffect(() => {
+    if (adAccounts.length > 0) {
+      setAdAccountId(adAccounts[0].id);
+    }
+  }, []);
 
   const fetchAllData = async () => {
-    if (!selectedAccount) return;
+    if (!adAccountId) {
+      setError("Silakan pilih Ad Account terlebih dahulu.");
+      return;
+    }
+
     setLoading(true);
     setError("");
-
-    const accountId = selectedAccount.replace(/^act_/, ""); // hapus act_ jika ada
-    const baseURL = `https://graph.facebook.com/v19.0/act_${accountId}`;
-
     try {
+      const baseURL = `https://graph.facebook.com/v19.0/act_${adAccountId}`;
       const [campaignRes, adsetRes, adRes] = await Promise.all([
         axios.get(`${baseURL}/campaigns`, {
           params: {
             access_token: accessToken,
-            fields: "id,name,status,objective,bid_strategy,daily_budget,lifetime_budget,buying_type,start_time,stop_time,effective_status",
+            fields:
+              "id,name,status,objective,bid_strategy,daily_budget,lifetime_budget,buying_type,start_time,stop_time,effective_status",
           },
         }),
         axios.get(`${baseURL}/adsets`, {
           params: {
             access_token: accessToken,
-            fields: "id,name,status,campaign_id,daily_budget,start_time,end_time,billing_event,optimization_goal",
+            fields:
+              "id,name,status,campaign_id,daily_budget,start_time,end_time,billing_event,optimization_goal",
           },
         }),
         axios.get(`${baseURL}/ads`, {
@@ -68,7 +62,6 @@ function App() {
           },
         }),
       ]);
-
       setCampaigns(campaignRes.data.data);
       setAdsets(adsetRes.data.data);
       setAds(adRes.data.data);
@@ -80,15 +73,16 @@ function App() {
   };
 
   const fetchInsightsWithCountryBreakdown = async () => {
-    if (!selectedAccount) return;
+    if (!adAccountId) {
+      setError("Silakan pilih Ad Account terlebih dahulu.");
+      return;
+    }
+
     setLoading(true);
     setError("");
-
-    const accountId = selectedAccount.replace(/^act_/, "");
-    const url = `https://graph.facebook.com/v19.0/act_${accountId}/insights`;
-
     try {
-      const response = await axios.get(url, {
+      const baseURL = `https://graph.facebook.com/v19.0/act_${adAccountId}/insights`;
+      const response = await axios.get(baseURL, {
         params: {
           access_token: accessToken,
           fields: "impressions,clicks,spend,ctr,cpm",
@@ -111,9 +105,9 @@ function App() {
           <h1 className="text-4xl font-extrabold text-blue-800 mb-4">📊 Facebook Ads Dashboard</h1>
 
           <AccountSelector
-            accounts={accounts}
-            selectedAccount={selectedAccount}
-            onChange={setSelectedAccount}
+            accounts={adAccounts}
+            selectedAccount={adAccountId}
+            onChange={setAdAccountId}
           />
 
           <button
@@ -123,7 +117,6 @@ function App() {
           >
             {loading ? "Memuat..." : "Ambil Semua Data"}
           </button>
-
           <button
             onClick={fetchInsightsWithCountryBreakdown}
             disabled={loading}
@@ -131,7 +124,6 @@ function App() {
           >
             {loading ? "Memuat..." : "Ambil Insights Breakdown Negara"}
           </button>
-
           {error && <p className="text-red-600 mt-3">{error}</p>}
         </div>
 
